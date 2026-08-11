@@ -3,8 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
+  provider = "postgresql"
+  // POSTGRES_PRISMA_URL is the pooled URL plus connect_timeout=15. Vercel's Neon
+  // integration injects it automatically; it lets a request survive the cold
+  // start when Neon has auto-suspended, instead of failing with "can't reach
+  // database server".
+  url       = env("POSTGRES_PRISMA_URL")
   directUrl = env("DATABASE_URL_UNPOOLED")
 }
 

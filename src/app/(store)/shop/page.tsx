@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getRatingsFor } from "@/lib/reviews";
 import { ProductCard } from "@/components/shop/ProductCard";
 
 interface ShopPageProps {
@@ -21,6 +22,7 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
   });
 
   const categories = await prisma.category.findMany({ orderBy: { name: "asc" } });
+  const ratings = await getRatingsFor(products.map((p) => p.id));
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
@@ -59,7 +61,11 @@ export default async function ShopPage({ searchParams }: ShopPageProps) {
       ) : (
         <div className="mt-12 grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-4">
           {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
+            <ProductCard
+              key={product.id}
+              product={product}
+              rating={ratings[product.id]}
+            />
           ))}
         </div>
       )}

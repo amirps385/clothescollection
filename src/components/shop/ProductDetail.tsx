@@ -62,7 +62,7 @@ export function ProductDetail({ product }: ProductDetailProps) {
             />
           ) : (
             <div className="flex h-full items-center justify-center font-serif text-6xl text-izhaana-charcoal/20">
-              R
+              I
             </div>
           )}
         </div>

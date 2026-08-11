@@ -12,6 +12,7 @@ export default async function AdminDashboard() {
     recentOrders,
     pendingReturns,
     openTickets,
+    pendingReviews,
   ] = await Promise.all([
       prisma.order.count(),
       prisma.product.count({ where: { active: true } }),
@@ -33,6 +34,7 @@ export default async function AdminDashboard() {
       prisma.supportTicket.count({
         where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
       }),
+      prisma.review.count({ where: { status: "PENDING" } }),
     ]);
 
   const stats = [
@@ -41,13 +43,14 @@ export default async function AdminDashboard() {
     { label: "Revenue", value: formatPrice(revenue._sum.total ?? 0) },
     { label: "Pending Returns", value: pendingReturns },
     { label: "Open Support", value: openTickets },
+    { label: "Reviews to Approve", value: pendingReviews },
   ];
 
   return (
     <div>
       <h1 className="font-serif text-3xl">Dashboard</h1>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => (
           <div
             key={stat.label}

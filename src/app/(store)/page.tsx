@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Truck, RotateCcw, ShieldCheck } from "lucide-react";
 import { prisma } from "@/lib/prisma";
+import { getRatingsFor } from "@/lib/reviews";
 import { ProductCard } from "@/components/shop/ProductCard";
 import { Button } from "@/components/ui/Button";
 import { HomeHero } from "@/components/home/HomeHero";
@@ -19,6 +20,8 @@ export default async function HomePage() {
     take: 8,
   });
 
+  const ratings = await getRatingsFor(featured.map((p) => p.id));
+
   return (
     <>
       <HomeHero />
@@ -32,7 +35,7 @@ export default async function HomePage() {
         <div className="mt-14 grid grid-cols-2 gap-4 sm:gap-8 lg:grid-cols-4">
           {featured.map((product, i) => (
             <FadeInSection key={product.id} delay={i * 0.08}>
-              <ProductCard product={product} />
+              <ProductCard product={product} rating={ratings[product.id]} />
             </FadeInSection>
           ))}
         </div>
