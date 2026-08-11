@@ -16,7 +16,9 @@ import {
   Star,
   Menu,
   X,
+  LogOut,
 } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -83,6 +85,21 @@ function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
           {item.label}
         </Link>
       ))}
+
+      <button
+        type="button"
+        onClick={() => {
+          onNavigate?.();
+          signOut({ callbackUrl: "/" });
+        }}
+        className={cn(
+          linkClass,
+          "w-full text-izhaana-cream/70 hover:bg-izhaana-cream/10 hover:text-izhaana-cream"
+        )}
+      >
+        <LogOut size={18} />
+        Sign Out
+      </button>
     </nav>
   );
 }

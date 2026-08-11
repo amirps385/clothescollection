@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingBag, User, Menu, X, Search } from "lucide-react";
+import { ShoppingBag, Menu, X, Search } from "lucide-react";
 import { useState } from "react";
-import { useSession } from "next-auth/react";
 import { useCartStore } from "@/store/cart";
+import { UserMenu } from "@/components/layout/UserMenu";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -20,10 +20,6 @@ export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const itemCount = useCartStore((s) => s.itemCount());
   const pathname = usePathname();
-  const { data: session } = useSession();
-
-  const isAdmin = session?.user?.role === "ADMIN";
-  const accountHref = isAdmin ? "/admin" : "/account";
 
   return (
     <header className="sticky top-0 z-50 border-b border-izhaana-charcoal/10 bg-izhaana-cream/95 backdrop-blur-sm">
@@ -65,14 +61,7 @@ export function Header() {
           <Link href="/shop" className="hidden sm:block text-izhaana-charcoal/70 hover:text-izhaana-burgundy">
             <Search size={20} />
           </Link>
-          <Link
-            href={accountHref}
-            aria-label={isAdmin ? "Admin dashboard" : "My account"}
-            title={isAdmin ? "Admin dashboard" : "My account"}
-            className="text-izhaana-charcoal/70 hover:text-izhaana-burgundy"
-          >
-            <User size={20} />
-          </Link>
+          <UserMenu />
           <Link href="/cart" className="relative text-izhaana-charcoal/70 hover:text-izhaana-burgundy">
             <ShoppingBag size={20} />
             {itemCount > 0 && (
