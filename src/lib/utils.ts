@@ -32,7 +32,7 @@ export function slugify(text: string) {
 
 export function generateOrderNumber() {
   const date = new Date();
-  const prefix = `RAB${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
+  const prefix = `IZH${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}`;
   const random = Math.random().toString(36).substring(2, 8).toUpperCase();
   return `${prefix}-${random}`;
 }
