@@ -27,18 +27,19 @@ export function ProductCard({ product, rating }: ProductCardProps) {
   const onSale = Boolean(product.compareAt && product.compareAt > product.price);
 
   return (
-    <div className="group flex flex-col">
+    <div className="group flex h-full flex-col">
       <Link
         href={`/shop/${product.slug}`}
         className="block transition-transform duration-300 group-hover:-translate-y-1"
       >
-        <div className="relative aspect-[3/4] overflow-hidden bg-izhaana-cream shadow-sm transition-shadow duration-300 group-hover:shadow-xl">
+        {/* object-contain so supplier photos of any shape are shown whole, not cropped. */}
+        <div className="relative aspect-[3/4] overflow-hidden bg-white shadow-sm transition-shadow duration-300 group-hover:shadow-xl">
           {images[0] ? (
             <ProductImage
               src={images[0]}
               alt={product.name}
               fill
-              className="object-cover transition-transform duration-500 group-hover:scale-105"
+              className="object-contain p-2 transition-transform duration-500 group-hover:scale-105"
               sizes="(max-width: 768px) 50vw, 25vw"
             />
           ) : (
@@ -64,7 +65,8 @@ export function ProductCard({ product, rating }: ProductCardProps) {
           <p className="text-xs uppercase tracking-widest text-izhaana-charcoal/50">
             {product.category.name}
           </p>
-          <h3 className="font-serif text-lg text-izhaana-charcoal transition-colors group-hover:text-izhaana-burgundy">
+          {/* Capped at two lines so one long name can't stretch a whole grid row. */}
+          <h3 className="line-clamp-2 font-serif text-lg text-izhaana-charcoal transition-colors group-hover:text-izhaana-burgundy">
             {product.name}
           </h3>
 
@@ -104,8 +106,10 @@ export function ProductCard({ product, rating }: ProductCardProps) {
         </div>
       </Link>
 
-      {/* Outside the Link — a button nested in an anchor is invalid markup. */}
-      <div className="mt-3">
+      {/* Outside the Link — a button nested in an anchor is invalid markup.
+          mt-auto pins it to the card bottom so buttons line up across a row
+          regardless of how many lines the product name wraps to. */}
+      <div className="mt-auto pt-3">
         {!inStock ? (
           <span className="block text-center text-xs uppercase tracking-widest text-izhaana-charcoal/35">
             Unavailable

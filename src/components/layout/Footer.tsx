@@ -23,14 +23,16 @@ export function Footer() {
           <div>
             <h4 className="text-sm font-medium uppercase tracking-widest">Support</h4>
             <ul className="mt-4 space-y-2 text-sm text-izhaana-cream/60">
-              <li><Link href="/account/returns" className="hover:text-izhaana-gold">Returns & Refunds</Link></li>
-              <li><Link href="/shipping" className="hover:text-izhaana-gold">Shipping Info</Link></li>
               <li><Link href="/contact" className="hover:text-izhaana-gold">Contact Us</Link></li>
+              <li><Link href="/shipping" className="hover:text-izhaana-gold">Shipping Policy</Link></li>
+              <li><Link href="/refund" className="hover:text-izhaana-gold">Refund &amp; Cancellation</Link></li>
+              <li><Link href="/account/returns" className="hover:text-izhaana-gold">Request a Return</Link></li>
             </ul>
           </div>
           <div>
-            <h4 className="text-sm font-medium uppercase tracking-widest">Legal</h4>
+            <h4 className="text-sm font-medium uppercase tracking-widest">Company</h4>
             <ul className="mt-4 space-y-2 text-sm text-izhaana-cream/60">
+              <li><Link href="/about" className="hover:text-izhaana-gold">About Us</Link></li>
               <li><Link href="/privacy" className="hover:text-izhaana-gold">Privacy Policy</Link></li>
               <li><Link href="/terms" className="hover:text-izhaana-gold">Terms of Service</Link></li>
             </ul>

@@ -51,13 +51,13 @@ export function ProductDetail({ product }: ProductDetailProps) {
   return (
     <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
       <div>
-        <div className="relative aspect-[3/4] bg-izhaana-cream">
+        <div className="relative aspect-[3/4] bg-white">
           {images[selectedImage] ? (
             <ProductImage
               src={images[selectedImage]}
               alt={product.name}
               fill
-              className="object-cover"
+              className="object-contain p-4"
               priority
             />
           ) : (
