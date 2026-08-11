@@ -4,8 +4,15 @@ import { formatPrice } from "@/lib/utils";
 export const metadata = { title: "Admin Dashboard" };
 
 export default async function AdminDashboard() {
-  const [orderCount, productCount, revenue, lowStock, recentOrders, pendingReturns] =
-    await Promise.all([
+  const [
+    orderCount,
+    productCount,
+    revenue,
+    lowStock,
+    recentOrders,
+    pendingReturns,
+    openTickets,
+  ] = await Promise.all([
       prisma.order.count(),
       prisma.product.count({ where: { active: true } }),
       prisma.order.aggregate({
@@ -23,6 +30,9 @@ export default async function AdminDashboard() {
         take: 5,
       }),
       prisma.return.count({ where: { status: "REQUESTED" } }),
+      prisma.supportTicket.count({
+        where: { status: { in: ["OPEN", "IN_PROGRESS"] } },
+      }),
     ]);
 
   const stats = [
@@ -30,13 +40,14 @@ export default async function AdminDashboard() {
     { label: "Active Products", value: productCount },
     { label: "Revenue", value: formatPrice(revenue._sum.total ?? 0) },
     { label: "Pending Returns", value: pendingReturns },
+    { label: "Open Support", value: openTickets },
   ];
 
   return (
     <div>
       <h1 className="font-serif text-3xl">Dashboard</h1>
 
-      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         {stats.map((stat) => (
           <div
             key={stat.label}

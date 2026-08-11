@@ -8,6 +8,7 @@ import {
   Tag,
   Warehouse,
   RotateCcw,
+  LifeBuoy,
 } from "lucide-react";
 
 const navItems = [
@@ -17,6 +18,7 @@ const navItems = [
   { href: "/admin/inventory", label: "Inventory", icon: Warehouse },
   { href: "/admin/coupons", label: "Coupons", icon: Tag },
   { href: "/admin/returns", label: "Returns", icon: RotateCcw },
+  { href: "/admin/support", label: "Support", icon: LifeBuoy },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
