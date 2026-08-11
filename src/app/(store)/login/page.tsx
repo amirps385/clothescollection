@@ -31,7 +31,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/account");
+    // /post-login reads the new session server-side and sends admins to /admin.
+    router.push("/post-login");
     router.refresh();
   }
 
