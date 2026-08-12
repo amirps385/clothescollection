@@ -179,8 +179,20 @@ export default async function OrderDetailPage({ params }: OrderPageProps) {
               {order.shippingLine2}
             </>
           ) : null}
+          {order.shippingLandmark ? (
+            <>
+              <br />
+              Near {order.shippingLandmark}
+            </>
+          ) : null}
           <br />
           {order.shippingCity}, {order.shippingState} {order.shippingPostal}
+          {order.shippingPhone ? (
+            <>
+              <br />
+              Phone: {order.shippingPhone}
+            </>
+          ) : null}
         </p>
       </section>
 

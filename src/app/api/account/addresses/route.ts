@@ -3,18 +3,25 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sanitizeInput } from "@/lib/security";
+import { MOBILE_PATTERN, PINCODE_PATTERN, isIndianState } from "@/lib/india";
 
 const addressSchema = z.object({
   label: z.string().trim().max(40).optional().default("Home"),
   fullName: z.string().trim().min(1, "Name is required"),
-  line1: z.string().trim().min(1, "Address is required"),
-  line2: z.string().trim().optional().default(""),
-  city: z.string().trim().min(1, "City is required"),
-  state: z.string().trim().min(1, "State is required"),
-  postalCode: z
+  phone: z
     .string()
     .trim()
-    .regex(/^\d{6}$/, "Enter a 6-digit PIN code"),
+    .regex(MOBILE_PATTERN, "Enter a valid 10-digit mobile number"),
+  line1: z.string().trim().min(1, "Address is required"),
+  line2: z.string().trim().optional().default(""),
+  landmark: z.string().trim().max(120).optional().default(""),
+  city: z.string().trim().min(1, "City is required"),
+  // Restricted to the canonical list so a typo can't flip the GST treatment.
+  state: z
+    .string()
+    .trim()
+    .refine(isIndianState, "Pick your state from the list"),
+  postalCode: z.string().trim().regex(PINCODE_PATTERN, "Enter a 6-digit PIN code"),
   country: z.string().trim().default("IN"),
   isDefault: z.boolean().default(false),
 });
@@ -23,8 +30,10 @@ function clean(input: z.infer<typeof addressSchema>) {
   return {
     label: sanitizeInput(input.label || "Home"),
     fullName: sanitizeInput(input.fullName),
+    phone: input.phone,
     line1: sanitizeInput(input.line1),
     line2: input.line2 ? sanitizeInput(input.line2) : null,
+    landmark: input.landmark ? sanitizeInput(input.landmark) : null,
     city: sanitizeInput(input.city),
     state: sanitizeInput(input.state),
     postalCode: input.postalCode,

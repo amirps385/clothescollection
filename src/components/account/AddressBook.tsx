@@ -5,13 +5,20 @@ import { useState } from "react";
 import { Plus, X, Star } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import {
+  AddressFields,
+  type AddressValue,
+} from "@/components/address/AddressFields";
+import { MOBILE_PATTERN, PINCODE_PATTERN, isIndianState } from "@/lib/india";
 
 export interface AddressRow {
   id: string;
   label: string;
   fullName: string;
+  phone: string | null;
   line1: string;
   line2: string | null;
+  landmark: string | null;
   city: string;
   state: string;
   postalCode: string;
@@ -19,23 +26,19 @@ export interface AddressRow {
   isDefault: boolean;
 }
 
-interface Draft {
+interface Draft extends AddressValue {
   id?: string;
   label: string;
-  fullName: string;
-  line1: string;
-  line2: string;
-  city: string;
-  state: string;
-  postalCode: string;
   isDefault: boolean;
 }
 
 const emptyDraft = (): Draft => ({
   label: "Home",
   fullName: "",
+  phone: "",
   line1: "",
   line2: "",
+  landmark: "",
   city: "",
   state: "",
   postalCode: "",
@@ -46,8 +49,10 @@ const toDraft = (a: AddressRow): Draft => ({
   id: a.id,
   label: a.label,
   fullName: a.fullName,
+  phone: a.phone ?? "",
   line1: a.line1,
   line2: a.line2 ?? "",
+  landmark: a.landmark ?? "",
   city: a.city,
   state: a.state,
   postalCode: a.postalCode,
@@ -86,6 +91,18 @@ export function AddressBook({ addresses }: { addresses: AddressRow[] }) {
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!draft) return;
+
+    if (!draft.fullName.trim()) return setError("Enter the recipient's name.");
+    if (!MOBILE_PATTERN.test(draft.phone))
+      return setError("Enter a valid 10-digit mobile number.");
+    if (!PINCODE_PATTERN.test(draft.postalCode))
+      return setError("Enter a 6-digit PIN code.");
+    if (!draft.line1.trim())
+      return setError("Enter the flat, house number or building.");
+    if (!draft.city.trim()) return setError("Enter the town or city.");
+    if (!isIndianState(draft.state))
+      return setError("Pick your state from the list.");
+
     if (await send(draft.id ? "PUT" : "POST", draft)) setDraft(null);
   }
 
@@ -119,51 +136,31 @@ export function AddressBook({ addresses }: { addresses: AddressRow[] }) {
             </button>
           </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Input
-              label="Label"
-              value={draft.label}
-              onChange={(e) => set("label", e.target.value)}
-              placeholder="Home, Office…"
-            />
-            <Input
-              label="Full name"
-              value={draft.fullName}
-              onChange={(e) => set("fullName", e.target.value)}
-              placeholder="Recipient's name"
-            />
-          </div>
-
-          <Input
-            label="Address"
-            value={draft.line1}
-            onChange={(e) => set("line1", e.target.value)}
-            placeholder="House / flat, street"
-          />
-          <Input
-            label="Landmark / area (optional)"
-            value={draft.line2}
-            onChange={(e) => set("line2", e.target.value)}
+          <AddressFields
+            value={draft}
+            onChange={(patch) =>
+              setDraft((d) => (d ? { ...d, ...patch } : d))
+            }
           />
 
-          <div className="grid gap-5 sm:grid-cols-3">
-            <Input
-              label="City"
-              value={draft.city}
-              onChange={(e) => set("city", e.target.value)}
-            />
-            <Input
-              label="State"
-              value={draft.state}
-              onChange={(e) => set("state", e.target.value)}
-            />
-            <Input
-              label="PIN code"
-              value={draft.postalCode}
-              onChange={(e) => set("postalCode", e.target.value)}
-              placeholder="452001"
-              inputMode="numeric"
-            />
+          <div className="space-y-1.5">
+            <span className="block text-sm font-medium">Address type</span>
+            <div className="flex gap-2">
+              {["Home", "Work"].map((type) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => set("label", type)}
+                  className={`border px-4 py-2 text-sm transition-colors ${
+                    draft.label === type
+                      ? "border-izhaana-burgundy bg-izhaana-burgundy text-white"
+                      : "border-izhaana-charcoal/20 hover:border-izhaana-burgundy"
+                  }`}
+                >
+                  {type}
+                </button>
+              ))}
+            </div>
           </div>
 
           <label className="flex items-center gap-2 text-sm">
@@ -221,8 +218,20 @@ export function AddressBook({ addresses }: { addresses: AddressRow[] }) {
               <p className="mt-1 text-sm leading-relaxed text-izhaana-charcoal/70">
                 {a.line1}
                 {a.line2 ? `, ${a.line2}` : ""}
+                {a.landmark ? (
+                  <>
+                    <br />
+                    Near {a.landmark}
+                  </>
+                ) : null}
                 <br />
                 {a.city}, {a.state} {a.postalCode}
+                {a.phone ? (
+                  <>
+                    <br />
+                    Phone: {a.phone}
+                  </>
+                ) : null}
               </p>
 
               <div className="mt-4 flex gap-4 text-sm">

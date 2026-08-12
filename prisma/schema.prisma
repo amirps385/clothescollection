@@ -75,8 +75,11 @@ model Address {
   user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   label      String  @default("Home")
   fullName   String
+  /** Couriers call the recipient, so each address carries its own number. */
+  phone      String?
   line1      String
   line2      String?
+  landmark   String?
   city       String
   state      String
   postalCode String
@@ -160,8 +163,11 @@ model Order {
   coupon          Coupon?     @relation(fields: [couponId], references: [id])
   couponCode      String?
   shippingName    String
+  /** Couriers call the recipient before delivery. */
+  shippingPhone   String?
   shippingLine1   String
   shippingLine2   String?
+  shippingLandmark String?
   shippingCity    String
   shippingState   String
   shippingPostal  String

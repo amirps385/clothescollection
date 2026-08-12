@@ -1,3 +1,5 @@
+import { STORE_STATE, normaliseState } from "@/lib/india";
+
 export interface GstBreakdown {
   cgst: number;
   sgst: number;
@@ -36,9 +38,13 @@ export function calculateGst(
 export function calculateOrderTax(
   items: { price: number; quantity: number; gstRate: number }[],
   shippingState: string,
-  storeState = "Maharashtra"
+  storeState: string = STORE_STATE
 ) {
-  const isInterState = shippingState.toLowerCase() !== storeState.toLowerCase();
+  // Both sides are normalised so a spelling variant can't flip an intra-state
+  // order (CGST+SGST) into an inter-state one (IGST) on the invoice.
+  const isInterState =
+    normaliseState(shippingState).toLowerCase() !==
+    normaliseState(storeState).toLowerCase();
   let totalTax = 0;
   const breakdown: Record<number, GstBreakdown> = {};
 

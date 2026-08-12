@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cart";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { AddressFields } from "@/components/address/AddressFields";
+import { MOBILE_PATTERN, PINCODE_PATTERN, isIndianState } from "@/lib/india";
 import { formatPrice } from "@/lib/utils";
 
 interface ShippingOption {
@@ -28,8 +30,10 @@ export default function CheckoutPage() {
   const [form, setForm] = useState({
     email: "",
     shippingName: "",
+    shippingPhone: "",
     shippingLine1: "",
     shippingLine2: "",
+    shippingLandmark: "",
     shippingCity: "",
     shippingState: "",
     shippingPostal: "",
@@ -94,8 +98,24 @@ export default function CheckoutPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
     setError("");
+
+    // Checked here as well as server-side: the state decides whether GST is
+    // charged as CGST+SGST or IGST, so it must be a real state.
+    if (!MOBILE_PATTERN.test(form.shippingPhone)) {
+      setError("Enter a valid 10-digit mobile number so the courier can call.");
+      return;
+    }
+    if (!PINCODE_PATTERN.test(form.shippingPostal)) {
+      setError("Enter a 6-digit PIN code.");
+      return;
+    }
+    if (!isIndianState(form.shippingState)) {
+      setError("Pick your state from the list.");
+      return;
+    }
+
+    setLoading(true);
 
     try {
       const res = await fetch("/api/checkout", {
@@ -154,42 +174,35 @@ export default function CheckoutPage() {
 
           <section className="space-y-4 border border-izhaana-charcoal/10 bg-white p-6">
             <h2 className="font-serif text-xl">Shipping Address</h2>
-            <Input
-              label="Full Name"
-              required
-              value={form.shippingName}
-              onChange={(e) => setForm({ ...form, shippingName: e.target.value })}
-            />
-            <Input
-              label="Address Line 1"
-              required
-              value={form.shippingLine1}
-              onChange={(e) => setForm({ ...form, shippingLine1: e.target.value })}
-            />
-            <Input
-              label="Address Line 2"
-              value={form.shippingLine2}
-              onChange={(e) => setForm({ ...form, shippingLine2: e.target.value })}
-            />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Input
-                label="City"
-                required
-                value={form.shippingCity}
-                onChange={(e) => setForm({ ...form, shippingCity: e.target.value })}
-              />
-              <Input
-                label="State"
-                required
-                value={form.shippingState}
-                onChange={(e) => setForm({ ...form, shippingState: e.target.value })}
-              />
-            </div>
-            <Input
-              label="Postal Code"
-              required
-              value={form.shippingPostal}
-              onChange={(e) => setForm({ ...form, shippingPostal: e.target.value })}
+            <AddressFields
+              idPrefix="ship"
+              value={{
+                fullName: form.shippingName,
+                phone: form.shippingPhone,
+                postalCode: form.shippingPostal,
+                line1: form.shippingLine1,
+                line2: form.shippingLine2,
+                landmark: form.shippingLandmark,
+                city: form.shippingCity,
+                state: form.shippingState,
+              }}
+              onChange={(patch) =>
+                setForm((f) => ({
+                  ...f,
+                  ...(patch.fullName !== undefined && { shippingName: patch.fullName }),
+                  ...(patch.phone !== undefined && { shippingPhone: patch.phone }),
+                  ...(patch.postalCode !== undefined && {
+                    shippingPostal: patch.postalCode,
+                  }),
+                  ...(patch.line1 !== undefined && { shippingLine1: patch.line1 }),
+                  ...(patch.line2 !== undefined && { shippingLine2: patch.line2 }),
+                  ...(patch.landmark !== undefined && {
+                    shippingLandmark: patch.landmark,
+                  }),
+                  ...(patch.city !== undefined && { shippingCity: patch.city }),
+                  ...(patch.state !== undefined && { shippingState: patch.state }),
+                }))
+              }
             />
           </section>
 
