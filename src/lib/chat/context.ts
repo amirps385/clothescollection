@@ -7,11 +7,23 @@ import { BUSINESS } from "@/lib/business";
  * — it has no other source, which is what stops it inventing products.
  */
 
-export function isChatConfigured() {
-  return Boolean(process.env.CHATGPT_API_KEY);
+export function getChatApiKey() {
+  return process.env.CHATGPT_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
 }
 
-export const CHAT_MODEL = process.env.CHATGPT_MODEL ?? "gpt-4o-mini";
+export function isChatDemoMode() {
+  const value = process.env.CHAT_DEMO_MODE?.toLowerCase();
+  if (value) return ["1", "true", "yes", "on"].includes(value);
+
+  return !getChatApiKey() || process.env.NODE_ENV === "development";
+}
+
+export function isChatConfigured() {
+  return Boolean(getChatApiKey()) || isChatDemoMode();
+}
+
+export const CHAT_MODEL =
+  process.env.CHATGPT_MODEL ?? process.env.OPENAI_MODEL ?? "gpt-4.1-mini";
 
 export async function buildCatalogContext() {
   const products = await prisma.product.findMany({
@@ -94,4 +106,39 @@ CATALOGUE
 ${catalog}
 
 ${orders ? `THIS CUSTOMER'S RECENT ORDERS\n${orders}` : "The customer is not signed in, so you cannot see any order details. If they ask about an order, ask them to sign in first."}`;
+}
+
+export function demoAssistantReply(message: string, catalog: string, orders: string | null) {
+  const text = message.toLowerCase();
+
+  if (/(shipping|delivery|deliver|ship|courier)/.test(text)) {
+    return `Delivery is free over ₹${BUSINESS.freeShippingOver}. Standard shipping is ₹99 and usually takes 5-7 business days, while express and premium options are faster at checkout.`;
+  }
+
+  if (/(return|refund|exchange|cancel)/.test(text)) {
+    return `Returns are accepted within ${BUSINESS.returnWindowDays} days on unworn items with tags. Unstitched fabric must be uncut, so a person should confirm anything unusual before promising a refund.`;
+  }
+
+  if (/(order|tracking|track|status)/.test(text)) {
+    return orders
+      ? `I can see recent order information once the customer is signed in. For this prototype, please use the account area for exact order status.`
+      : `Please sign in first so I can help with order status or tracking details.`;
+  }
+
+  const products = catalog
+    .split("\n")
+    .filter(Boolean)
+    .slice(0, 3)
+    .map((line) => {
+      const [name, ...details] = line.split(" | ");
+      const price = details.find((detail) => detail.startsWith("price:"))?.replace("price: ", "");
+      const link = details.find((detail) => detail.startsWith("link:"))?.replace("link: ", "");
+      return `${name}${price ? ` (${price})` : ""}${link ? ` - ${link}` : ""}`;
+    });
+
+  if (products.length === 0) {
+    return `I don't see catalogue items loaded yet. Please contact us at ${BUSINESS.email} and a person will help.`;
+  }
+
+  return `This is prototype demo mode, so I can answer from the current catalogue without using OpenAI credits. A few options are ${products.join("; ")}.`;
 }

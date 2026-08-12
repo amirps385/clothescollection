@@ -6,7 +6,10 @@ import {
   CHAT_MODEL,
   buildCatalogContext,
   buildOrderContext,
+  demoAssistantReply,
+  getChatApiKey,
   isChatConfigured,
+  isChatDemoMode,
   systemPrompt,
 } from "@/lib/chat/context";
 
@@ -64,6 +67,15 @@ export async function POST(req: NextRequest) {
 
   const catalog = await buildCatalogContext();
   const orders = session?.user ? await buildOrderContext(session.user.id) : null;
+  const apiKey = getChatApiKey();
+  const latestMessage = parsed.data.messages.at(-1)?.content ?? "";
+
+  if (!apiKey && isChatDemoMode()) {
+    return NextResponse.json({
+      reply: demoAssistantReply(latestMessage, catalog, orders),
+      mode: "demo",
+    });
+  }
 
   let upstream: Response;
   try {
@@ -71,7 +83,7 @@ export async function POST(req: NextRequest) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.CHATGPT_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: CHAT_MODEL,
@@ -92,10 +104,41 @@ export async function POST(req: NextRequest) {
 
   if (!upstream.ok) {
     // Log the upstream detail server-side; don't leak it to the browser.
-    console.error("[chat] OpenAI error", upstream.status, await upstream.text());
+    const rawError = await upstream.text();
+    let error: { error?: { code?: string | null; message?: string; type?: string } } = {};
+    try {
+      error = JSON.parse(rawError);
+    } catch {
+      error = {};
+    }
+    const code = error.error?.code;
+    const type = error.error?.type;
+    console.error("[chat] OpenAI error", {
+      status: upstream.status,
+      code,
+      type,
+      message: error.error?.message ?? rawError,
+    });
+
+    if (isChatDemoMode()) {
+      return NextResponse.json({
+        reply: demoAssistantReply(latestMessage, catalog, orders),
+        mode: "demo",
+      });
+    }
+
+    const quotaExhausted =
+      code === "credit_balance_exhausted" ||
+      code === "insufficient_quota" ||
+      type === "insufficient_quota";
+
     return NextResponse.json(
-      { error: "The assistant is unavailable right now. Please try again." },
-      { status: 502 }
+      {
+        error: quotaExhausted
+          ? "The assistant needs OpenAI API credits before it can reply. Please try again later."
+          : "The assistant is unavailable right now. Please try again.",
+      },
+      { status: quotaExhausted ? 402 : 502 }
     );
   }
 

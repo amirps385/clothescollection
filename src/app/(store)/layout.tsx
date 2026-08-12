@@ -9,8 +9,7 @@ export default function StoreLayout({ children }: { children: React.ReactNode })
       <Header />
       <main className="flex-1">{children}</main>
       <Footer />
-      {/* Hidden entirely when no API key is set, rather than showing a button
-          that can only fail — same pattern as the Stripe and Blob gates. */}
+      {/* Shows in prototype demo mode without API credits, and uses OpenAI when configured. */}
       {isChatConfigured() && <ChatWidget />}
     </div>
   );
