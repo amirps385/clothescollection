@@ -8,6 +8,7 @@ import {
   buildOrderContext,
   demoAssistantReply,
   getChatApiKey,
+  getChatBaseUrl,
   isChatConfigured,
   isChatDemoMode,
   systemPrompt,
@@ -79,7 +80,7 @@ export async function POST(req: NextRequest) {
 
   let upstream: Response;
   try {
-    upstream = await fetch("https://api.openai.com/v1/chat/completions", {
+    upstream = await fetch(`${getChatBaseUrl()}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -113,7 +114,9 @@ export async function POST(req: NextRequest) {
     }
     const code = error.error?.code;
     const type = error.error?.type;
-    console.error("[chat] OpenAI error", {
+    console.error("[chat] provider error", {
+      baseUrl: getChatBaseUrl(),
+      model: CHAT_MODEL,
       status: upstream.status,
       code,
       type,
@@ -135,7 +138,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         error: quotaExhausted
-          ? "The assistant needs OpenAI API credits before it can reply. Please try again later."
+          ? "The assistant has run out of API credits. Please try again later."
           : "The assistant is unavailable right now. Please try again.",
       },
       { status: quotaExhausted ? 402 : 502 }

@@ -11,15 +11,40 @@ export function getChatApiKey() {
   return process.env.CHATGPT_API_KEY ?? process.env.OPENAI_API_KEY ?? "";
 }
 
+/**
+ * Demo mode returns canned catalogue answers with no API call.
+ *
+ * Deliberately NOT enabled just because we're in development: falling back to
+ * canned replies whenever a real request fails makes a broken key or empty
+ * quota look like a working chatbot, which is exactly when you need to see the
+ * error. Set CHAT_DEMO_MODE explicitly to force it on.
+ */
 export function isChatDemoMode() {
   const value = process.env.CHAT_DEMO_MODE?.toLowerCase();
   if (value) return ["1", "true", "yes", "on"].includes(value);
 
-  return !getChatApiKey() || process.env.NODE_ENV === "development";
+  return !getChatApiKey();
 }
 
 export function isChatConfigured() {
   return Boolean(getChatApiKey()) || isChatDemoMode();
+}
+
+/**
+ * Any provider with an OpenAI-compatible /chat/completions endpoint works —
+ * DeepSeek, Groq, Gemini, OpenRouter, Mistral — so a free tier can be used for
+ * testing and swapped for the client's OpenAI key later without a code change.
+ *
+ *   OpenAI      https://api.openai.com/v1        (default)
+ *   Groq        https://api.groq.com/openai/v1
+ *   DeepSeek    https://api.deepseek.com/v1
+ *   OpenRouter  https://openrouter.ai/api/v1
+ *   Gemini      https://generativelanguage.googleapis.com/v1beta/openai
+ */
+export function getChatBaseUrl() {
+  return (
+    process.env.CHAT_BASE_URL?.replace(/\/+$/, "") ?? "https://api.openai.com/v1"
+  );
 }
 
 export const CHAT_MODEL =
