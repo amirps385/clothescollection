@@ -18,22 +18,67 @@ const SUGGESTIONS = [
   "What's your return policy?",
 ];
 
-/** Turns "/shop/some-slug" in a reply into a real link. */
+const LINK_CLASS = "text-izhaana-burgundy underline underline-offset-2";
+
+/**
+ * Models answer in markdown by habit, so render the small subset they actually
+ * use: [label](/path) links, bare /shop/slug paths, and "* " bullet lines.
+ * Anything else is shown as plain text — no markdown library needed.
+ */
+function renderInline(text: string, keyPrefix: string) {
+  // Split on markdown links first, then bare product paths in the leftovers.
+  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+
+  return parts.flatMap((part, i) => {
+    const md = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    if (md) {
+      const [, label, href] = md;
+      return href.startsWith("/") ? (
+        <Link key={`${keyPrefix}-l${i}`} href={href} className={LINK_CLASS}>
+          {label}
+        </Link>
+      ) : (
+        <span key={`${keyPrefix}-l${i}`}>{label}</span>
+      );
+    }
+
+    return part
+      .split(/(\/shop\/[a-z0-9-]+)/g)
+      .map((chunk, j) =>
+        chunk.startsWith("/shop/") ? (
+          <Link
+            key={`${keyPrefix}-p${i}-${j}`}
+            href={chunk}
+            className={LINK_CLASS}
+          >
+            view product
+          </Link>
+        ) : (
+          // Strip emphasis markers the model sprinkles in.
+          <span key={`${keyPrefix}-t${i}-${j}`}>{chunk.replace(/\*\*/g, "")}</span>
+        )
+      );
+  });
+}
+
 function renderReply(text: string) {
-  const parts = text.split(/(\/shop\/[a-z0-9-]+)/g);
-  return parts.map((part, i) =>
-    part.startsWith("/shop/") ? (
-      <Link
-        key={i}
-        href={part}
-        className="text-izhaana-burgundy underline underline-offset-2"
-      >
-        view product
-      </Link>
-    ) : (
-      <span key={i}>{part}</span>
-    )
-  );
+  // Bullets often arrive inline as " * item * item"; give each its own line.
+  const lines = text
+    .replace(/\s+\*\s+/g, "\n* ")
+    .split("\n")
+    .filter((l) => l.trim().length > 0);
+
+  return lines.map((line, i) => {
+    const bullet = line.trimStart().startsWith("* ");
+    const content = bullet ? line.trimStart().slice(2) : line;
+
+    return (
+      <p key={i} className={bullet ? "flex gap-1.5 pl-1" : undefined}>
+        {bullet && <span aria-hidden>•</span>}
+        <span>{renderInline(content, String(i))}</span>
+      </p>
+    );
+  });
 }
 
 export function ChatWidget() {

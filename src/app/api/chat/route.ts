@@ -21,7 +21,13 @@ const HOUR = 60 * 60 * 1000;
 /** Caps what we send to and accept from the model, to bound cost per call. */
 const MAX_TURNS = 10;
 const MAX_CHARS = 1000;
-const MAX_RESPONSE_TOKENS = 400;
+/**
+ * A ceiling, not a spend commitment — we're only billed for tokens actually
+ * produced. It needs headroom because reasoning models (Gemini Flash, and
+ * OpenAI's o-series) spend output tokens on invisible thinking first; at 400
+ * the thinking consumed the budget and answers arrived truncated mid-sentence.
+ */
+const MAX_RESPONSE_TOKENS = 1500;
 
 const bodySchema = z.object({
   messages: z
