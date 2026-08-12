@@ -67,6 +67,41 @@ export function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+/**
+ * Rate limit with its own budget and window, for endpoints that cost real money
+ * per call (the AI chat bills OpenAI on every message).
+ *
+ * NOTE: this is in-process, so on serverless each instance keeps its own tally
+ * and the count resets when an instance recycles. It stops casual abuse and
+ * runaway loops, not a determined distributed attacker — that needs a shared
+ * store such as Redis.
+ */
+const scopedLimits = new Map<string, { count: number; resetAt: number }>();
+
+export function checkScopedRateLimit(
+  key: string,
+  max: number,
+  windowMs: number
+): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const entry = scopedLimits.get(key);
+
+  if (!entry || now > entry.resetAt) {
+    scopedLimits.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+
+  if (entry.count >= max) {
+    return {
+      allowed: false,
+      retryAfterSeconds: Math.ceil((entry.resetAt - now) / 1000),
+    };
+  }
+
+  entry.count++;
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
 export function sanitizeInput(input: string): string {
   return input.replace(/<[^>]*>/g, "").trim();
 }
