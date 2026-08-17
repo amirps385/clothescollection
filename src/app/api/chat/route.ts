@@ -25,11 +25,15 @@ const HOUR = 60 * 60 * 1000;
  * reports which settings this environment actually has and what the provider
  * says, without ever revealing the key.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session?.user || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+
+  // ?q=... replays a real question through the full catalogue prompt, so a
+  // failure that only shows up on heavier questions can be reproduced here.
+  const question = req.nextUrl.searchParams.get("q")?.trim();
 
   const key = getChatApiKey();
   const baseUrl = getChatBaseUrl();
@@ -58,7 +62,19 @@ export async function GET() {
   let providerError: string | null = null;
   let replied = false;
 
+  let sample: string | null = null;
+  let finishReason: string | null = null;
+
   try {
+    // With ?q= this mirrors a real request exactly: same catalogue prompt, same
+    // token budget. Without it, a cheap ping.
+    const messages = question
+      ? [
+          { role: "system", content: systemPrompt(await buildCatalogContext(), null) },
+          { role: "user", content: question },
+        ]
+      : [{ role: "user", content: "Reply with exactly: OK" }];
+
     const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: {
@@ -67,15 +83,18 @@ export async function GET() {
       },
       body: JSON.stringify({
         model: CHAT_MODEL,
-        max_tokens: 400,
-        messages: [{ role: "user", content: "Reply with exactly: OK" }],
+        max_tokens: question ? MAX_RESPONSE_TOKENS : 400,
+        messages,
       }),
     });
 
     providerStatus = res.status;
     if (res.ok) {
       const data = await res.json();
-      replied = Boolean(data.choices?.[0]?.message?.content);
+      const content = data.choices?.[0]?.message?.content;
+      finishReason = data.choices?.[0]?.finish_reason ?? null;
+      replied = Boolean(content);
+      sample = content ? String(content).slice(0, 200) : null;
     } else {
       const body = await res.json().catch(() => null);
       providerError = body?.error?.message ?? `HTTP ${res.status}`;
@@ -93,13 +112,17 @@ export async function GET() {
         : providerStatus === 404
           ? `The provider doesn't recognise model "${CHAT_MODEL}". Set CHATGPT_MODEL to one it offers.`
           : providerStatus === 429
-            ? "Rate limited or out of credits at the provider."
-            : `Provider returned ${providerStatus ?? "no response"}.`;
+            ? "Rate limited or out of quota at the provider. On Gemini's free tier this hits after a burst of messages — wait a minute and retry."
+            : finishReason === "length"
+              ? "The model spent its whole token budget on reasoning and returned nothing. Raise MAX_RESPONSE_TOKENS."
+              : `Provider returned ${providerStatus ?? "no response"}.`;
 
   return NextResponse.json({
     ok: replied,
+    testedQuestion: question ?? "(cheap ping — add ?q=your+question to test a real one)",
     config,
-    provider: { status: providerStatus, error: providerError },
+    provider: { status: providerStatus, error: providerError, finishReason },
+    sample,
     diagnosis,
   });
 }
@@ -226,6 +249,19 @@ export async function POST(req: NextRequest) {
       code === "credit_balance_exhausted" ||
       code === "insufficient_quota" ||
       type === "insufficient_quota";
+
+    // A plain 429 is the provider throttling us, not an empty wallet — common on
+    // free tiers after a short burst. Saying "unavailable" made a transient
+    // limit look like an outage, so shoppers didn't know to simply retry.
+    if (upstream.status === 429 && !quotaExhausted) {
+      return NextResponse.json(
+        {
+          error:
+            "I'm getting a lot of questions right now — please wait a few seconds and send that again.",
+        },
+        { status: 429, headers: { "Retry-After": "20" } }
+      );
+    }
 
     return NextResponse.json(
       {
