@@ -18,6 +18,92 @@ import {
 const MAX_MESSAGES_PER_HOUR = 25;
 const HOUR = 60 * 60 * 1000;
 
+/**
+ * Admin-only health check. Production failures are hard to diagnose from the
+ * widget — every provider error looks like "the assistant is unavailable" — and
+ * Vercel logs aren't convenient. Visiting /api/chat while signed in as an admin
+ * reports which settings this environment actually has and what the provider
+ * says, without ever revealing the key.
+ */
+export async function GET() {
+  const session = await auth();
+  if (!session?.user || session.user.role !== "ADMIN") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const key = getChatApiKey();
+  const baseUrl = getChatBaseUrl();
+
+  const config = {
+    keyPresent: Boolean(key),
+    keyLength: key.length,
+    keyPrefix: key ? `${key.slice(0, 3)}…` : null,
+    baseUrl,
+    model: CHAT_MODEL,
+    demoMode: isChatDemoMode(),
+    // Points at OpenAI while holding a non-OpenAI key: the usual misconfiguration.
+    looksMismatched:
+      baseUrl.includes("api.openai.com") && Boolean(key) && !key.startsWith("sk-"),
+  };
+
+  if (!key) {
+    return NextResponse.json({
+      ok: false,
+      config,
+      diagnosis: "No API key in this environment — set CHATGPT_API_KEY.",
+    });
+  }
+
+  let providerStatus: number | null = null;
+  let providerError: string | null = null;
+  let replied = false;
+
+  try {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+      },
+      body: JSON.stringify({
+        model: CHAT_MODEL,
+        max_tokens: 400,
+        messages: [{ role: "user", content: "Reply with exactly: OK" }],
+      }),
+    });
+
+    providerStatus = res.status;
+    if (res.ok) {
+      const data = await res.json();
+      replied = Boolean(data.choices?.[0]?.message?.content);
+    } else {
+      const body = await res.json().catch(() => null);
+      providerError = body?.error?.message ?? `HTTP ${res.status}`;
+    }
+  } catch (e) {
+    providerError = (e as Error).message;
+  }
+
+  const diagnosis = replied
+    ? "Working."
+    : config.looksMismatched
+      ? "CHAT_BASE_URL is missing or points at OpenAI, but the key isn't an OpenAI key. Set CHAT_BASE_URL for your provider."
+      : providerStatus === 401 || providerStatus === 403
+        ? "The provider rejected the key. Check CHATGPT_API_KEY and CHAT_BASE_URL match the same provider."
+        : providerStatus === 404
+          ? `The provider doesn't recognise model "${CHAT_MODEL}". Set CHATGPT_MODEL to one it offers.`
+          : providerStatus === 429
+            ? "Rate limited or out of credits at the provider."
+            : `Provider returned ${providerStatus ?? "no response"}.`;
+
+  return NextResponse.json({
+    ok: replied,
+    config,
+    provider: { status: providerStatus, error: providerError },
+    diagnosis,
+  });
+}
+
 /** Caps what we send to and accept from the model, to bound cost per call. */
 const MAX_TURNS = 10;
 const MAX_CHARS = 1000;
