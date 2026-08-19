@@ -110,12 +110,14 @@ export async function GET(req: NextRequest) {
       : providerStatus === 401 || providerStatus === 403
         ? "The provider rejected the key. Check CHATGPT_API_KEY and CHAT_BASE_URL match the same provider."
         : providerStatus === 404
-          ? `The provider doesn't recognise model "${CHAT_MODEL}". Set CHATGPT_MODEL to one it offers.`
+          ? `The provider doesn't recognise model "${CHAT_MODEL}", or your plan can't access it. Set CHATGPT_MODEL to one your plan offers.`
           : providerStatus === 429
-            ? "Rate limited or out of quota at the provider. On Gemini's free tier this hits after a burst of messages — wait a minute and retry."
+            ? "Rate limited or out of quota at the provider. Free tiers hit this after a burst of messages — wait a minute and retry."
             : finishReason === "length"
               ? "The model spent its whole token budget on reasoning and returned nothing. Raise MAX_RESPONSE_TOKENS."
-              : `Provider returned ${providerStatus ?? "no response"}.`;
+              : providerStatus === 200
+                ? "The provider accepted the request but returned an empty answer — usually a free-tier burst limit. Retry in a few seconds."
+                : `Provider returned ${providerStatus ?? "no response"}.`;
 
   return NextResponse.json({
     ok: replied,
@@ -277,8 +279,22 @@ export async function POST(req: NextRequest) {
   const reply = data.choices?.[0]?.message?.content?.trim();
 
   if (!reply) {
+    // Not necessarily a bad question: some providers answer a burst of requests
+    // with HTTP 200 and an empty completion instead of a 429 (oxlo does this —
+    // the same question succeeds on its own moments later). Telling the shopper
+    // to rephrase a perfectly good question sent them in circles, so ask for a
+    // retry and record the finish reason to tell the two cases apart in logs.
+    console.error("[chat] empty completion", {
+      model: CHAT_MODEL,
+      finishReason: data.choices?.[0]?.finish_reason ?? null,
+      usage: data.usage ?? null,
+    });
+
     return NextResponse.json(
-      { error: "The assistant didn't have an answer. Please rephrase?" },
+      {
+        error:
+          "I didn't manage to answer that — please send it again in a few seconds.",
+      },
       { status: 502 }
     );
   }

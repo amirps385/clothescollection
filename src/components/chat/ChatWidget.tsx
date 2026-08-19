@@ -24,13 +24,18 @@ const LINK_CLASS = "text-izhaana-burgundy underline underline-offset-2";
  * Models answer in markdown by habit, so render the small subset they actually
  * use: [label](/path) links, bare /shop/slug paths, and "* " bullet lines.
  * Anything else is shown as plain text — no markdown library needed.
+ *
+ * The closing bracket is `[)\]]` rather than `\)` on purpose: small models
+ * (gemma-3-4b among the ones tested) routinely mis-close a link as
+ * `[Label](/shop/slug]`. Insisting on `)` left that raw markdown on screen, so
+ * both forms are accepted. Hrefs never contain `]`, so this can't over-match.
  */
 function renderInline(text: string, keyPrefix: string) {
   // Split on markdown links first, then bare product paths in the leftovers.
-  const parts = text.split(/(\[[^\]]+\]\([^)]+\))/g);
+  const parts = text.split(/(\[[^\]]+\]\([^)\]]+[)\]])/g);
 
   return parts.flatMap((part, i) => {
-    const md = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+    const md = part.match(/^\[([^\]]+)\]\(([^)\]]+)[)\]]$/);
     if (md) {
       const [, label, href] = md;
       return href.startsWith("/") ? (
