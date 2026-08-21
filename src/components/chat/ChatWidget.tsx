@@ -189,9 +189,17 @@ export function ChatWidget() {
             ))}
 
             {sending && (
-              <p className="flex items-center gap-1.5 text-xs text-izhaana-charcoal/50">
+              // Wording matters more than it looks: "Typing…" read as the
+              // shopper's *own* message still being composed, so people thought
+              // it hadn't sent and re-sent it. This states both facts — it left,
+              // and we're the ones they're waiting on. aria-live announces the
+              // wait to screen readers, which a bare spinner never did.
+              <p
+                aria-live="polite"
+                className="flex items-center gap-1.5 text-xs text-izhaana-charcoal/50"
+              >
                 <Loader2 size={12} className="animate-spin" />
-                Typing…
+                Sent — waiting for a reply…
               </p>
             )}
 
