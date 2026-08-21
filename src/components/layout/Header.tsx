@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShoppingBag, Menu, X, Search } from "lucide-react";
+import { ShoppingBag, Menu, X } from "lucide-react";
 import { useState } from "react";
 import { useCartStore } from "@/store/cart";
 import { UserMenu } from "@/components/layout/UserMenu";
+import { SearchBox } from "@/components/shop/SearchBox";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -58,9 +59,9 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Link href="/shop" className="hidden sm:block text-izhaana-charcoal/70 hover:text-izhaana-burgundy">
-            <Search size={20} />
-          </Link>
+          <div className="hidden sm:block">
+            <SearchBox />
+          </div>
           <UserMenu />
           <Link href="/cart" className="relative text-izhaana-charcoal/70 hover:text-izhaana-burgundy">
             <ShoppingBag size={20} />
@@ -75,6 +76,12 @@ export function Header() {
 
       {mobileOpen && (
         <nav className="border-t border-izhaana-charcoal/10 bg-izhaana-cream px-4 py-4 lg:hidden">
+          {/* The header magnifier is sm-and-up only, so phones had no way to
+              search at all — this is their only entry point. */}
+          <div className="pb-3 sm:hidden">
+            <SearchBox variant="inline" onNavigate={() => setMobileOpen(false)} />
+          </div>
+
           {navLinks.map((link) => (
             <Link
               key={link.href}
